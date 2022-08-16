@@ -1,7 +1,10 @@
 ﻿using EmptyAPI.Data;
 using EmptyAPI.Data.Entities;
+using EmptyAPI.DTOs;
+using EmptyAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
@@ -14,18 +17,53 @@ namespace EmptyAPI.Controllers
     public class ExcelDataController : BaseApiController
     {
         private readonly AppDbContext _context;
-
-        public ExcelDataController(AppDbContext context)
+        private readonly IConfiguration _config;
+        public ExcelDataController(AppDbContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
         }
 
 
         [HttpGet]
-        public IActionResult GetData()
+        public IActionResult GetData([FromQuery] Filter filter, [FromQuery] DataFilterDto dataFilter)
         {
+            if (filter == 0 || dataFilter == null)
+            {
+                return BadRequest("Main demands still remain !");
+            }   
 
-            return Ok("grdin");
+            string type = Enum.GetName(typeof(Filter), filter);
+
+            DateTime startDate = dataFilter.StartDate;
+
+            DateTime endDate = dataFilter.EndDate;
+
+            string email = dataFilter.AcceptorEmail;
+
+            var query = _context.ExcelDatas.Where(d => d.Segment == type && d.Date > startDate && d.Date < endDate);
+
+            var datas = query.ToList();
+
+            string excelName = $"Datas-{DateTime.Now.ToString("yyyyMMddHHmmssfff")}.xlsx";
+
+            var path = @$"C:\Users\User\Desktop\Pyp\EmptyAPI\EmptyAPI\EmptyAPI\wwwroot\{excelName}";
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+
+            using (var package = new ExcelPackage())
+            {
+
+                var workSheet = package.Workbook.Worksheets.Add("Sheet1").Cells[1,1].LoadFromCollection(datas,true);
+                package.SaveAs(path);
+
+                EmailService emailService = new EmailService(_config.GetSection("ConfirmationParams:Email").Value, _config.GetSection("ConfirmationParams:Password").Value);
+                emailService.SendEmail(email, "Datas Report", "something will be happened here", path, excelName);
+                
+            }
+
+          
+            return Ok("sended");
         }
 
         [HttpPost]
