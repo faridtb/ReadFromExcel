@@ -20,7 +20,7 @@ namespace EmptyAPI.Services
         }
 
 
-        public bool SendEmail(string UserEmail, string subject, string content,string path, string filename = null)
+        public bool SendEmail(string UserEmail, string subject, string content, byte[] bytes = null, string filename = null)
         {
             MailMessage mailMessage = new MailMessage();
             mailMessage.From = new MailAddress(_privateEmail);
@@ -29,15 +29,11 @@ namespace EmptyAPI.Services
             mailMessage.Subject = subject;
             mailMessage.IsBodyHtml = true;
             mailMessage.Body = content;
-
-            var attachment = new Attachment(File.Open(path, FileMode.Open), filename);
-            attachment.ContentType = new ContentType("application/vnd.ms-excel");
-
-            mailMessage.Attachments.Add(attachment);
+            mailMessage.Attachments.Add(new Attachment(new MemoryStream(bytes), filename));
 
             SmtpClient client = new SmtpClient();
             client.Credentials = new System.Net.NetworkCredential(_privateEmail, _privatePassword);
-            client.Host = "smtp.gmail.com";
+            client.Host = "smtp.mail.ru";
             client.EnableSsl = true;
             client.Port = 587;
 
@@ -46,7 +42,7 @@ namespace EmptyAPI.Services
                 client.Send(mailMessage);
                 return true;
             }
-            catch (Exception)
+            catch (System.Exception)
             {
 
 
@@ -55,6 +51,6 @@ namespace EmptyAPI.Services
             return false;
         }
 
-        
+
     }
 }

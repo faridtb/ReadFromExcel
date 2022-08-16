@@ -1,4 +1,5 @@
-﻿using EmptyAPI.Data;
+﻿using Aspose.Cells;
+using EmptyAPI.Data;
 using EmptyAPI.Data.Entities;
 using EmptyAPI.DTOs;
 using EmptyAPI.Services;
@@ -10,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace EmptyAPI.Controllers
 {
@@ -31,7 +31,7 @@ namespace EmptyAPI.Controllers
             if (filter == 0 || dataFilter == null)
             {
                 return BadRequest("Main demands still remain !");
-            }   
+            }
 
             string type = Enum.GetName(typeof(Filter), filter);
 
@@ -41,11 +41,64 @@ namespace EmptyAPI.Controllers
 
             string email = dataFilter.AcceptorEmail;
 
-            var query = _context.ExcelDatas.Where(d => d.Segment == type && d.Date > startDate && d.Date < endDate);
+            var query = _context.ExcelDatas.Where(d => d.Date >= startDate && d.Date <= endDate);
 
             var datas = query.ToList();
+            var mergedList = new List<DataReturnDto>();
 
-            string excelName = $"Datas-{DateTime.Now.ToString("yyyyMMddHHmmssfff")}.xlsx";
+            switch (type)
+            {
+                case "Segment":
+                    mergedList = datas.GroupBy(x => x.Segment)
+                                         .Select(g => new DataReturnDto
+                                         {
+                                             FilterName = g.Key,
+                                             Discount = g.Sum(x => x.Discount),
+                                             Profit = g.Sum(x => x.Profit),
+                                             Sale = g.Sum(x => x.Sale),
+                                             TotalCount = g.Count()
+                                         })
+                                         .ToList();
+
+                    break;
+                case "Country":
+                    mergedList = datas.GroupBy(x => x.Country)
+                                       .Select(g => new DataReturnDto
+                                       {
+                                           FilterName = g.Key,
+                                           Discount = g.Sum(x => x.Discount),
+                                           Profit = g.Sum(x => x.Profit),
+                                           Sale = g.Sum(x => x.Sale),
+                                           TotalCount = g.Count()
+                                       })
+                                         .ToList();
+
+                    break;
+                case "Product":
+                    mergedList = datas.GroupBy(x => x.Product)
+                         .Select(g => new DataReturnDto
+                         {
+                             FilterName = g.Key,
+                             Discount = g.Sum(x => x.Discount),
+                             Profit = g.Sum(x => x.Profit),
+                             Sale = g.Sum(x => x.Sale),
+                             TotalCount = g.Count()
+                         })
+                                         .ToList();
+                    break;
+                case "Discount":
+                    mergedList = datas.GroupBy(x => x.Product)
+                                       .Select(g => new DataReturnDto { FilterName = g.Key, Discount = g.Sum(x => x.Discount), Profit = g.Sum(x => x.Profit), Sale = g.Sum(x => x.Sale), TotalCount = g.Count() })
+                                       .ToList();
+                    break;
+                default:
+                    break;
+            }
+
+
+
+
+            string excelName = $"Datas-{DateTime.Now.ToString("yy.MMMM.ddd.ss")}.xlsx";
 
             var path = @$"C:\Users\User\Desktop\Pyp\EmptyAPI\EmptyAPI\EmptyAPI\wwwroot\{excelName}";
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -54,15 +107,22 @@ namespace EmptyAPI.Controllers
             using (var package = new ExcelPackage())
             {
 
-                var workSheet = package.Workbook.Worksheets.Add("Sheet1").Cells[1,1].LoadFromCollection(datas,true);
+                var workSheet = package.Workbook.Worksheets.Add("Sheet1").Cells[1, 1].LoadFromCollection(mergedList, true);
                 package.SaveAs(path);
 
+                Workbook workbook = new Workbook(path);
+                MemoryStream ms = new MemoryStream();
+                workbook.Save(ms, SaveFormat.Xlsx);
+                byte[] contentData = new byte[ms.Length];
+                ms.Read(contentData, 0, contentData.Length);
+
+
                 EmailService emailService = new EmailService(_config.GetSection("ConfirmationParams:Email").Value, _config.GetSection("ConfirmationParams:Password").Value);
-                emailService.SendEmail(email, "Datas Report", "something will be happened here", path, excelName);
-                
+                emailService.SendEmail(email, "Datas Report", "something will be happened here", contentData, excelName);
+
             }
 
-          
+
             return Ok("sended");
         }
 
@@ -74,13 +134,13 @@ namespace EmptyAPI.Controllers
                 return BadRequest("File cant be null");
             }
 
-            if (Path.GetExtension(file.FileName) != ".xls" && Path.GetExtension(file.FileName) != ".xlsx" )
+            if (Path.GetExtension(file.FileName) != ".xls" && Path.GetExtension(file.FileName) != ".xlsx")
             {
                 return BadRequest("Wrong Format");
             }
 
 
-            if (file.Length / Math.Pow(10,6) > 5)
+            if (file.Length / Math.Pow(10, 6) > 5)
             {
                 return BadRequest("Oversize");
             }
@@ -92,7 +152,7 @@ namespace EmptyAPI.Controllers
                 using (var package = new ExcelPackage(stream))
                 {
                     ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-                        
+
                     ExcelWorksheet worksheet = package.Workbook.Worksheets.First();
                     var rowcount = worksheet.Dimension.Rows;
 
