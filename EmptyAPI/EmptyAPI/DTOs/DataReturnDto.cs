@@ -7,7 +7,7 @@ namespace EmptyAPI.DTOs
 {
     public class DataReturnDto
     {
-        public string FilterName { get; set; }
+        public string Type { get; set; }
         public int TotalCount { get; set; }
         public double Sale { get; set; }
         public double Discount { get; set; }

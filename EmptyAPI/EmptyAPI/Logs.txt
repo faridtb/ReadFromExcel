@@ -1,0 +1,7 @@
+2022-08-17 02:43:46.835 +04:00 [INF] Application started. Press Ctrl+C to shut down.
+2022-08-17 02:43:46.894 +04:00 [INF] Hosting environment: Development
+2022-08-17 02:43:46.902 +04:00 [INF] Content root path: C:\Users\User\Desktop\Pyp\EmptyAPI\EmptyAPI\EmptyAPI
+2022-08-17 02:43:46.913 +04:00 [INF] Request starting HTTP/2.0 GET https://localhost:44313/swagger/index.html  
+2022-08-17 02:43:47.253 +04:00 [INF] Request finished in 356.4706ms 200 text/html;charset=utf-8
+2022-08-17 02:43:47.732 +04:00 [INF] Request starting HTTP/2.0 GET https://localhost:44313/swagger/v2/swagger.json  
+2022-08-17 02:43:47.993 +04:00 [INF] Request finished in 261.0096ms 200 application/json;charset=utf-8

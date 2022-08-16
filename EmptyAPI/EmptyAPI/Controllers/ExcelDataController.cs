@@ -1,11 +1,11 @@
-﻿using Aspose.Cells;
-using EmptyAPI.Data;
+﻿using EmptyAPI.Data;
 using EmptyAPI.Data.Entities;
 using EmptyAPI.DTOs;
 using EmptyAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
@@ -18,10 +18,12 @@ namespace EmptyAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
-        public ExcelDataController(AppDbContext context, IConfiguration config)
+        private readonly ILogger<ExcelDataController> _logger;
+        public ExcelDataController(AppDbContext context, IConfiguration config, ILogger<ExcelDataController> logger)
         {
             _context = context;
             _config = config;
+            _logger = logger;
         }
 
 
@@ -30,9 +32,9 @@ namespace EmptyAPI.Controllers
         {
             if (filter == 0 || dataFilter == null)
             {
-                return BadRequest("Main demands still remain !");
+                _logger.LogError("Bad Request");
+                return BadRequest("Please send all main information for getting result data");
             }
-
             string type = Enum.GetName(typeof(Filter), filter);
 
             DateTime startDate = dataFilter.StartDate;
@@ -43,62 +45,59 @@ namespace EmptyAPI.Controllers
 
             var query = _context.ExcelDatas.Where(d => d.Date >= startDate && d.Date <= endDate);
 
-            var datas = query.ToList();
             var mergedList = new List<DataReturnDto>();
 
             switch (type)
             {
                 case "Segment":
-                    mergedList = datas.GroupBy(x => x.Segment)
+                    mergedList = query.GroupBy(x => x.Segment)
                                          .Select(g => new DataReturnDto
                                          {
-                                             FilterName = g.Key,
+                                             Type = g.Key,
                                              Discount = g.Sum(x => x.Discount),
                                              Profit = g.Sum(x => x.Profit),
                                              Sale = g.Sum(x => x.Sale),
                                              TotalCount = g.Count()
                                          })
                                          .ToList();
-
+                    _logger.LogWarning("Data for Segment pulled");
                     break;
                 case "Country":
-                    mergedList = datas.GroupBy(x => x.Country)
+                    mergedList = query.GroupBy(x => x.Country)
                                        .Select(g => new DataReturnDto
                                        {
-                                           FilterName = g.Key,
+                                           Type = g.Key,
                                            Discount = g.Sum(x => x.Discount),
                                            Profit = g.Sum(x => x.Profit),
                                            Sale = g.Sum(x => x.Sale),
                                            TotalCount = g.Count()
                                        })
                                          .ToList();
-
+                    _logger.LogWarning("Data for country pulled");
                     break;
                 case "Product":
-                    mergedList = datas.GroupBy(x => x.Product)
+                    mergedList = query.GroupBy(x => x.Product)
                          .Select(g => new DataReturnDto
                          {
-                             FilterName = g.Key,
+                             Type = g.Key,
                              Discount = g.Sum(x => x.Discount),
                              Profit = g.Sum(x => x.Profit),
                              Sale = g.Sum(x => x.Sale),
                              TotalCount = g.Count()
                          })
                                          .ToList();
+                    _logger.LogWarning("Data for Product pulled");
                     break;
                 case "Discount":
-                    mergedList = datas.GroupBy(x => x.Product)
-                                       .Select(g => new DataReturnDto { FilterName = g.Key, Discount = g.Sum(x => x.Discount), Profit = g.Sum(x => x.Profit), Sale = g.Sum(x => x.Sale), TotalCount = g.Count() })
-                                       .ToList();
+                    _logger.LogWarning("Data for Discounts pulled");
                     break;
                 default:
+                    
                     break;
             }
 
 
-
-
-            string excelName = $"Datas-{DateTime.Now.ToString("yy.MMMM.ddd.ss")}.xlsx";
+            string excelName = $"Datas-{DateTime.Now.ToString("dd.MMMM.yyyy")}.xlsx";
 
             var path = @$"C:\Users\User\Desktop\Pyp\EmptyAPI\EmptyAPI\EmptyAPI\wwwroot\{excelName}";
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -110,38 +109,46 @@ namespace EmptyAPI.Controllers
                 var workSheet = package.Workbook.Worksheets.Add("Sheet1").Cells[1, 1].LoadFromCollection(mergedList, true);
                 package.SaveAs(path);
 
-                Workbook workbook = new Workbook(path);
                 MemoryStream ms = new MemoryStream();
-                workbook.Save(ms, SaveFormat.Xlsx);
-                byte[] contentData = new byte[ms.Length];
-                ms.Read(contentData, 0, contentData.Length);
 
+                using (var file = new FileStream(path, FileMode.Open, FileAccess.Read))
+                {
+                    var bytes = new byte[file.Length];
+                    file.Read(bytes, 0, (int)file.Length);
+                    ms.Write(bytes, 0, (int)file.Length);
+                    file.Close();
 
-                EmailService emailService = new EmailService(_config.GetSection("ConfirmationParams:Email").Value, _config.GetSection("ConfirmationParams:Password").Value);
-                emailService.SendEmail(email, "Datas Report", "something will be happened here", contentData, excelName);
+                    EmailService emailService = new EmailService(_config.GetSection("ConfirmationParams:Email").Value, _config.GetSection("ConfirmationParams:Password").Value);
+                    emailService.SendEmail(email, "Datas Report", "something will be happened here", bytes, excelName);
+                }
 
             }
 
-
+            _logger.LogInformation("Data pull Succeded !");
             return Ok("sended");
         }
+
+
 
         [HttpPost]
         public IActionResult AddData(IFormFile file)
         {
             if (file is null)
             {
+                _logger.LogError("File is null");
                 return BadRequest("File cant be null");
             }
 
             if (Path.GetExtension(file.FileName) != ".xls" && Path.GetExtension(file.FileName) != ".xlsx")
             {
+                _logger.LogError("Wrong Format");
                 return BadRequest("Wrong Format");
             }
 
 
             if (file.Length / Math.Pow(10, 6) > 5)
             {
+                _logger.LogError("Oversize");
                 return BadRequest("Oversize");
             }
 
@@ -177,6 +184,7 @@ namespace EmptyAPI.Controllers
                         _context.ExcelDatas.Add(dataFromExcel);
                     }
                 }
+                _logger.LogInformation("Mounting data from excel to sql success");
                 _context.SaveChanges();
                 return Ok("Mounting datas from excel to database succedeed !");
             }
