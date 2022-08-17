@@ -40,6 +40,10 @@
         "netcoreapp3.1": {
           "targetAlias": "netcoreapp3.1",
           "dependencies": {
+            "AutoMapper.Extensions.Microsoft.DependencyInjection": {
+              "target": "Package",
+              "version": "[11.0.0, )"
+            },
             "EPPlus": {
               "target": "Package",
               "version": "[6.0.6, )"
@@ -76,6 +80,14 @@
               "target": "Package",
               "version": "[6.0.1, )"
             },
+            "Serilog.Enrichers.Environment": {
+              "target": "Package",
+              "version": "[2.2.0, )"
+            },
+            "Serilog.Settings.Configuration": {
+              "target": "Package",
+              "version": "[3.3.0, )"
+            },
             "Serilog.Sinks.Debug": {
               "target": "Package",
               "version": "[2.0.0, )"
@@ -84,9 +96,9 @@
               "target": "Package",
               "version": "[5.0.0, )"
             },
-            "Serilog.Sinks.TextWriter": {
+            "Serilog.Sinks.MSSqlServer": {
               "target": "Package",
-              "version": "[2.1.0, )"
+              "version": "[5.7.1, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

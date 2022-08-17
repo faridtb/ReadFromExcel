@@ -16,18 +16,12 @@ namespace EmptyAPI
         public static void Main(string[] args)
         {
 
-            Log.Logger = new LoggerConfiguration()
-                .WriteTo.Debug(Serilog.Events.LogEventLevel.Information)
-                .WriteTo.File("Logs.txt")
-                .CreateLogger();
-
-
             CreateHostBuilder(args).Build().Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-            .UseSerilog()
+                .UseSerilog()
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();

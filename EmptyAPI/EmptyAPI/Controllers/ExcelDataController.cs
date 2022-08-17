@@ -1,4 +1,5 @@
-﻿using EmptyAPI.Data;
+﻿using AutoMapper;
+using EmptyAPI.Data;
 using EmptyAPI.Data.Entities;
 using EmptyAPI.DTOs;
 using EmptyAPI.Services;
@@ -19,37 +20,33 @@ namespace EmptyAPI.Controllers
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
         private readonly ILogger<ExcelDataController> _logger;
-        public ExcelDataController(AppDbContext context, IConfiguration config, ILogger<ExcelDataController> logger)
+        private readonly IMapper _mapper;
+        public ExcelDataController(AppDbContext context, IConfiguration config, ILogger<ExcelDataController> logger, IMapper mapper)
         {
             _context = context;
             _config = config;
             _logger = logger;
+            _mapper = mapper;
         }
 
 
         [HttpGet]
-        public IActionResult GetData([FromQuery] Filter filter, [FromQuery] DataFilterDto dataFilter)
+        public IActionResult GetData([FromQuery] DataFilterDto dataFilter)
         {
-            if (filter == 0 || dataFilter == null)
+            if ( dataFilter == null)
             {
                 _logger.LogError("Bad Request");
                 return BadRequest("Please send all main information for getting result data");
             }
-            string type = Enum.GetName(typeof(Filter), filter);
 
-            DateTime startDate = dataFilter.StartDate;
-
-            DateTime endDate = dataFilter.EndDate;
-
-            string email = dataFilter.AcceptorEmail;
-
-            var query = _context.ExcelDatas.Where(d => d.Date >= startDate && d.Date <= endDate);
+            var query = _context.ExcelDatas.Where(d => d.Date >= dataFilter.StartDate && d.Date <= dataFilter.EndDate);
 
             var mergedList = new List<DataReturnDto>();
 
-            switch (type)
+            switch (Enum.GetName(typeof(Filter), dataFilter.Filter))
             {
                 case "Segment":
+                    DataReturnDto dataReturnDto = _mapper.Map<DataReturnDto>(query);               
                     mergedList = query.GroupBy(x => x.Segment)
                                          .Select(g => new DataReturnDto
                                          {
@@ -97,7 +94,7 @@ namespace EmptyAPI.Controllers
             }
 
 
-            string excelName = $"Datas-{DateTime.Now.ToString("dd.MMMM.yyyy")}.xlsx";
+            string excelName = $"Datas-{DateTime.Now.ToString("dd.MMMM.yyyy HH:mm:ss")}.xlsx";
 
             var path = @$"C:\Users\User\Desktop\Pyp\EmptyAPI\EmptyAPI\EmptyAPI\wwwroot\{excelName}";
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -119,7 +116,7 @@ namespace EmptyAPI.Controllers
                     file.Close();
 
                     EmailService emailService = new EmailService(_config.GetSection("ConfirmationParams:Email").Value, _config.GetSection("ConfirmationParams:Password").Value);
-                    emailService.SendEmail(email, "Datas Report", "something will be happened here", bytes, excelName);
+                    emailService.SendEmail(dataFilter.AcceptorEmail, "Datas Report", "something will be happened here", bytes, excelName);
                 }
 
             }

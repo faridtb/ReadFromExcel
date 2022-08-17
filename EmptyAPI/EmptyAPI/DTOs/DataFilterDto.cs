@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -8,6 +9,8 @@ namespace EmptyAPI.DTOs
 {
     public class DataFilterDto
     {
+        [EnumDataType(typeof(Filter))]
+        public Filter Filter { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public string AcceptorEmail { get; set; }

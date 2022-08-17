@@ -14,6 +14,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using EmptyAPI.DTOs;
+using Serilog;
+using EmptyAPI.Mapping;
 
 namespace EmptyAPI
 {
@@ -35,6 +37,7 @@ namespace EmptyAPI
             {
                 opt.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
             });
+            services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
             services.AddSwaggerGen(options =>
             {
                 options.SwaggerDoc("v2", new Microsoft.OpenApi.Models.OpenApiInfo
@@ -44,7 +47,12 @@ namespace EmptyAPI
                     Description = "Sample service for Learner",
                 });
             });
-            services.AddLogging();
+
+
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(Configuration)
+                .CreateLogger();
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,7 +62,6 @@ namespace EmptyAPI
             {
                 app.UseDeveloperExceptionPage();
             }
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
