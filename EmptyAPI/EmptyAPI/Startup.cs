@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using EmptyAPI.DTOs;
 using Serilog;
 using EmptyAPI.Mapping;
+using System.Text.Json.Serialization;
 
 namespace EmptyAPI
 {
@@ -31,7 +32,11 @@ namespace EmptyAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddFluentValidation(x => x.RegisterValidatorsFromAssemblyContaining<DataFilterDto>());
+            services.AddControllers().AddFluentValidation(x => x.RegisterValidatorsFromAssemblyContaining<DataFilterDto>()).AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                options.JsonSerializerOptions.IgnoreNullValues = true;
+            }); 
 
             services.AddDbContext<AppDbContext>(opt =>
             {
